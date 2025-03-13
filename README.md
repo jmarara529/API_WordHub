@@ -18,7 +18,7 @@ Esta API permite gestionar usuarios, publicaciones y comentarios, incluyendo aut
     ```
 
 ## IMPORTANTE
-En la raiz del proyecto hay que crear un archivo .env para establecer las credenciales de la base de datos con el contenido:
+En la raiz del proyecto hay que crear un archivo llamado ".env" para establecer las credenciales de la base de datos con el contenido:
 ```env
 DB_HOST=<URL>
 DB_USER=<TU_USUARIO>
@@ -45,7 +45,7 @@ en caso de querer ejecutar la versión preparada para https y usar el cifrado:
 node API-https.js
 ```
 **recuerda**
-Añadir las rutas de los certificados en el fichero .env:
+Añadir las rutas de los certificados en el archivo .env:
 ```env
 PRIVATE_KEY_SSL=ruta/privkey.pem
 PRIVATE_CERT_SSL=ruta/fullchain.pem
