@@ -1,0 +1,22 @@
+# Ignorar archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos y carpetas relacionados con el entorno de desarrollo
+node_modules/
+.env
+.vscode/
+
+# Ignorar compilaciones y paquetes
+dist/
+build/
+*.log
+*.tmp
+
+# Ignorar archivos de Python si trabajas con este lenguaje
+__pycache__/
+*.py[cod]
+
+# Ignorar archivos de configuración personales
+*.env.local
+*.config
