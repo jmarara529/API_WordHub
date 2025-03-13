@@ -399,7 +399,27 @@ ADD CONSTRAINT comentarios_ibfk_1
 FOREIGN KEY (publicación_id) REFERENCES publicaciones(id)
 ON DELETE CASCADE;
 ```
+
 * Esto permite que al eliminar una publicacion, los comentarios asociados a esta se borren en cascada
+---
+```sql
+ALTER TABLE publicaciones
+ADD CONSTRAINT fk_publicaciones_usuario
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+ON DELETE CASCADE;
+```
+* Esto permite que al eliminar una cuenta, los comentarios asociados a esta se borren en cascada
+
+
+---
+```sql
+ALTER TABLE comentarios
+ADD CONSTRAINT fk_comentarios_usuario
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+ON DELETE CASCADE;
+```
+* Esto permite que al eliminar una cuenta, las publicaciones asociadas a esta se borren en cascada
+
 
 ### Índices
 ```sql
