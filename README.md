@@ -145,9 +145,26 @@ Respuestas:
 ### Publicaciones
 #### GET
 ```url
-<url>/publicaciones
+<url>/publicaciones/todas
 ```
 Descripción: Obtiene todas las publicaciones.
+
+Respuestas:
+
++ 200 OK: Lista de publicaciones.
+
++ 500 Internal Server Error: Error al obtener datos.
+
+#### GET
+```url
+<url>/publicaciones
+```
+Descripción: Obtiene las publicaciones del usuario logeado.
+
+Headers:
+```header
+Authorization: Bearer <token>
+```
 
 Respuestas:
 

@@ -136,9 +136,18 @@ app.post('/login', (req, res) => {
 });
 
 // Ruta para obtener todas las publicaciones
-app.get('/publicaciones', (req, res) => {
+app.get('/publicaciones/todas', (req, res) => {
     const query = 'SELECT * FROM publicaciones';
     db.query(query, (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+});
+
+// Ruta para obtener todas las publicaciones del usuario logueado
+app.get('/publicaciones', verifyToken, (req, res) => {
+    const query = 'SELECT * FROM publicaciones WHERE usuario_id = ?';
+    db.query(query, [req.userId], (err, results) => {
         if (err) throw err;
         res.json(results);
     });
