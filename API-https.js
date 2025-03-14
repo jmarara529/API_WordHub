@@ -140,7 +140,7 @@ app.post('/publicaciones', verifyToken,
 
 // 📌 OBTENER TODOS LOS COMENTARIOS DE UNA PUBLICACIÓN
 app.get('/publicaciones/:id/comentarios', (req, res) => {
-    const query = 'SELECT * FROM comentarios WHERE publicación_id = ?';
+    const query = 'SELECT * FROM comentarios WHERE publicacion_id = ?';
     db.query(query, [req.params.id], (err, results) => {
         if (err) throw err;
         res.json(results);
@@ -159,10 +159,10 @@ app.post('/publicaciones/:id/comentarios', verifyToken,
         }
 
         const { contenido } = req.body;
-        const query = 'INSERT INTO comentarios (publicación_id, usuario_id, contenido) VALUES (?, ?, ?)';
+        const query = 'INSERT INTO comentarios (publicacion_id, usuario_id, contenido) VALUES (?, ?, ?)';
         db.query(query, [req.params.id, req.userId, contenido], (err, result) => {
             if (err) throw err;
-            res.json({ id: result.insertId, publicación_id: req.params.id, usuario_id: req.userId, contenido });
+            res.json({ id: result.insertId, publicacion_id: req.params.id, usuario_id: req.userId, contenido });
         });
     }
 );
