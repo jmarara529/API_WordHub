@@ -172,6 +172,24 @@ Respuestas:
 
 + 500 Internal Server Error: Error al obtener datos.
 
+#### GET
+```url
+<url>/publicaciones/:id
+```
+Descripción: Obtiene la publicación por id.
+
+```json
+{
+    "id": "id_publicacion"
+}
+```
+
+Respuestas:
+
++ 200 OK: Lista de publicaciones.
+
++ 500 Internal Server Error: Error al obtener datos.
+
 #### POST
 ```url
 <url>/publicaciones

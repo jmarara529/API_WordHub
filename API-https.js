@@ -153,6 +153,15 @@ app.get('/publicaciones', verifyToken, (req, res) => {
     });
 });
 
+// Ruta para obtener publicacion por id
+app.get('/publicaciones/:id', (req, res) => {
+    const query = 'SELECT * FROM publicaciones WHERE id = ?';
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+});
+
 // Ruta para crear una nueva publicación
 app.post('/publicaciones',
     [
