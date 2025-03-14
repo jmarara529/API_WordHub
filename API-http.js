@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 require('dotenv').config();
 
-
 const app = express();
 app.use(bodyParser.json());
 
@@ -19,27 +18,30 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
     if (err) throw err;
-    console.log('Conectado a la base de datos');
+    console.log('✅ Conectado a la base de datos');
 });
 
-// Middleware para verificar el token
+// 🔐 Clave secreta desde .env
+const JWT_SECRET = process.env.JWT_SECRET || 'clave_segura_super_secreta';
+
+// Middleware para verificar el token con formato "Bearer <token>"
 const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (token) {
-        jwt.verify(token, 'your_secret_key', (err, decoded) => {
-            if (err) {
-                return res.status(401).json({ message: 'Token inválido' });
-            } else {
-                req.userId = decoded.id;
-                next();
-            }
-        });
-    } else {
-        res.status(401).json({ message: 'Token no proporcionado' });
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Token no proporcionado o inválido' });
     }
+
+    const token = authHeader.split(" ")[1]; // Extrae solo el token
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ message: 'Token inválido' });
+        }
+        req.userId = decoded.id;
+        next();
+    });
 };
 
-// Ruta para el registro de usuarios
+// 📌 Ruta para registrar usuarios
 app.post('/register',
     [
         body('nombre').notEmpty().withMessage('El nombre es obligatorio'),
@@ -62,63 +64,45 @@ app.post('/register',
     }
 );
 
-// Ruta para modificar un usuario
-app.put('/usuarios/:id',
-    [
-        verifyToken,
-        body('nombre').optional().notEmpty().withMessage('El nombre no puede estar vacío'),
-        body('email').optional().isEmail().withMessage('El email debe ser válido'),
-        body('contraseña').optional().isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres')
-    ],
-    (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errores: errors.array() });
-        }
-
-        const { nombre, email, contraseña } = req.body;
-        let query = 'UPDATE usuarios SET ';
-        const updates = [];
-        const values = [];
-
-        if (nombre) {
-            updates.push('nombre = ?');
-            values.push(nombre);
-        }
-        if (email) {
-            updates.push('email = ?');
-            values.push(email);
-        }
-        if (contraseña) {
-            updates.push('contraseña = ?');
-            values.push(bcrypt.hashSync(contraseña, 10));
-        }
-
-        query += updates.join(', ') + ' WHERE id = ?';
-        values.push(req.params.id);
-
-        db.query(query, values, (err, result) => {
-            if (err) throw err;
-            res.json({ id: req.params.id, nombre, email });
-        });
+// 📌 Modificar un usuario (solo el dueño puede hacerlo)
+app.put('/usuarios/:id', verifyToken, (req, res) => {
+    if (req.userId !== parseInt(req.params.id)) {
+        return res.status(403).json({ message: 'No tienes permiso para modificar este usuario' });
     }
-);
 
-// Ruta para obtener un usuario por ID
-app.get('/usuarios/:id', verifyToken, (req, res) => {
-    const query = 'SELECT id, nombre, email FROM usuarios WHERE id = ?';
-    db.query(query, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ message: 'Error al obtener el usuario', error: err });
-        if (results.length > 0) {
-            res.json(results[0]); // Devolver el primer resultado como un objeto
-        } else {
-            res.status(404).json({ message: 'Usuario no encontrado' });
-        }
+    const { nombre, email, contraseña } = req.body;
+    let query = 'UPDATE usuarios SET ';
+    const updates = [];
+    const values = [];
+
+    if (nombre) {
+        updates.push('nombre = ?');
+        values.push(nombre);
+    }
+    if (email) {
+        updates.push('email = ?');
+        values.push(email);
+    }
+    if (contraseña) {
+        updates.push('contraseña = ?');
+        values.push(bcrypt.hashSync(contraseña, 10));
+    }
+
+    query += updates.join(', ') + ' WHERE id = ?';
+    values.push(req.params.id);
+
+    db.query(query, values, (err, result) => {
+        if (err) throw err;
+        res.json({ id: req.params.id, nombre, email });
     });
 });
 
-// Ruta para eliminar un usuario
+// 📌 Eliminar un usuario (solo el dueño puede hacerlo)
 app.delete('/usuarios/:id', verifyToken, (req, res) => {
+    if (req.userId !== parseInt(req.params.id)) {
+        return res.status(403).json({ message: 'No tienes permiso para eliminar este usuario' });
+    }
+
     const query = 'DELETE FROM usuarios WHERE id = ?';
     db.query(query, [req.params.id], (err, result) => {
         if (err) throw err;
@@ -126,8 +110,7 @@ app.delete('/usuarios/:id', verifyToken, (req, res) => {
     });
 });
 
-
-// Ruta para el inicio de sesión
+// 📌 Iniciar sesión
 app.post('/login', (req, res) => {
     const { email, contraseña } = req.body;
     const query = 'SELECT * FROM usuarios WHERE email = ?';
@@ -136,7 +119,7 @@ app.post('/login', (req, res) => {
         if (results.length > 0) {
             const user = results[0];
             if (bcrypt.compareSync(contraseña, user.contraseña)) {
-                const token = jwt.sign({ id: user.id }, 'your_secret_key', { expiresIn: '1h' });
+                const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1h' });
                 res.json({ token });
             } else {
                 res.status(401).json({ message: 'Credenciales inválidas' });
@@ -147,163 +130,72 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Ruta para obtener todas las publicaciones
-app.get('/publicaciones/todas', (req, res) => {
-    const query = 'SELECT * FROM publicaciones';
-    db.query(query, (err, results) => {
-        if (err) throw err;
-        res.json(results);
-    });
-});
+// 📌 Editar una publicación (solo el autor puede hacerlo)
+app.put('/publicaciones/:id', verifyToken, (req, res) => {
+    const { titulo, contenido } = req.body;
+    const checkQuery = 'SELECT usuario_id FROM publicaciones WHERE id = ?';
 
-// Ruta para obtener todas las publicaciones del usuario logueado
-app.get('/publicaciones', verifyToken, (req, res) => {
-    const query = 'SELECT * FROM publicaciones WHERE usuario_id = ?';
-    db.query(query, [req.userId], (err, results) => {
+    db.query(checkQuery, [req.params.id], (err, results) => {
         if (err) throw err;
-        res.json(results);
-    });
-});
-
-// Ruta para obtener publicacion por id
-app.get('/publicaciones/:id', (req, res) => {
-    const query = 'SELECT * FROM publicaciones WHERE id = ?';
-    db.query(query, [req.params.id], (err, results) => {
-        if (err) throw err;
-        if (results.length > 0) {
-            res.json(results[0]); // Devolver el primer resultado como un objeto
-        } else {
-            res.status(404).json({ message: 'Publicación no encontrada' });
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Publicación no encontrada' });
         }
-    });
-});
-
-// Ruta para crear una nueva publicación
-app.post('/publicaciones',
-    [
-        verifyToken,
-        body('titulo').notEmpty().withMessage('El título es obligatorio'),
-        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
-    ],
-    (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errores: errors.array() });
+        if (results[0].usuario_id !== req.userId) {
+            return res.status(403).json({ message: 'No tienes permiso para editar esta publicación' });
         }
 
-        const { titulo, contenido } = req.body;
-        const query = 'INSERT INTO publicaciones (usuario_id, titulo, contenido) VALUES (?, ?, ?)';
-        db.query(query, [req.userId, titulo, contenido], (err, result) => {
-            if (err) throw err;
-            res.json({ id: result.insertId, usuario_id: req.userId, titulo, contenido });
-        });
-    }
-);
-
-// Ruta para editar una publicación
-app.put('/publicaciones/:id',
-    [
-        verifyToken,
-        body('titulo').notEmpty().withMessage('El título es obligatorio'),
-        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
-    ],
-    (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errores: errors.array() });
-        }
-
-        const { titulo, contenido } = req.body;
-        const query = 'UPDATE publicaciones SET titulo = ?, contenido = ? WHERE id = ? AND usuario_id = ?';
-        db.query(query, [titulo, contenido, req.params.id, req.userId], (err, result) => {
+        const updateQuery = 'UPDATE publicaciones SET titulo = ?, contenido = ? WHERE id = ?';
+        db.query(updateQuery, [titulo, contenido, req.params.id], (err, result) => {
             if (err) throw err;
             res.json({ id: req.params.id, titulo, contenido });
         });
-    }
-);
+    });
+});
 
-// Ruta para eliminar una publicación
+// 📌 Eliminar una publicación (solo el autor puede hacerlo)
 app.delete('/publicaciones/:id', verifyToken, (req, res) => {
-    const deleteCommentsQuery = 'DELETE FROM comentarios WHERE publicación_id = ?';
-    db.query(deleteCommentsQuery, [req.params.id], (err) => {
-        if (err) return res.status(500).json({ message: 'Error al eliminar comentarios', error: err });
+    const checkQuery = 'SELECT usuario_id FROM publicaciones WHERE id = ?';
 
-        const deletePublicationQuery = 'DELETE FROM publicaciones WHERE id = ? AND usuario_id = ?';
-        db.query(deletePublicationQuery, [req.params.id, req.userId], (err, result) => {
-            if (err) return res.status(500).json({ message: 'Error al eliminar publicación', error: err });
-
-            res.json({ message: 'Publicación y comentarios eliminados' });
-        });
-    });
-});
-
-// Ruta para obtener todos los comentarios de una publicación
-app.get('/publicaciones/:id/comentarios', (req, res) => {
-    const query = 'SELECT * FROM comentarios WHERE publicación_id = ?';
-    db.query(query, [req.params.id], (err, results) => {
+    db.query(checkQuery, [req.params.id], (err, results) => {
         if (err) throw err;
-        res.json(results);
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Publicación no encontrada' });
+        }
+        if (results[0].usuario_id !== req.userId) {
+            return res.status(403).json({ message: 'No tienes permiso para eliminar esta publicación' });
+        }
+
+        const deleteQuery = 'DELETE FROM publicaciones WHERE id = ?';
+        db.query(deleteQuery, [req.params.id], (err, result) => {
+            if (err) throw err;
+            res.json({ message: 'Publicación eliminada' });
+        });
     });
 });
 
-// Ruta para crear un nuevo comentario en una publicación
-app.post('/publicaciones/:id/comentarios',
-    [
-        verifyToken,
-        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
-    ],
-    (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errores: errors.array() });
-        }
-
-        const { contenido } = req.body;
-        const query = 'INSERT INTO comentarios (publicación_id, usuario_id, contenido) VALUES (?, ?, ?)';
-        db.query(query, [req.params.id, req.userId, contenido], (err, result) => {
-            if (err) throw err;
-            res.json({
-                id: result.insertId,
-                publicación_id: req.params.id,
-                usuario_id: req.userId,
-                contenido
-            });
-        });
-    }
-);
-
-// Ruta para editar un comentario
-app.put('/comentarios/:id',
-    [
-        verifyToken,
-        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
-    ],
-    (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errores: errors.array() });
-        }
-
-        const { contenido } = req.body;
-        const query = 'UPDATE comentarios SET contenido = ? WHERE id = ? AND usuario_id = ?';
-        db.query(query, [contenido, req.params.id, req.userId], (err, result) => {
-            if (err) throw err;
-            res.json({ id: req.params.id, contenido });
-        });
-    }
-);
-
-// Ruta para eliminar un comentario
+// 📌 Eliminar un comentario (solo el autor puede hacerlo)
 app.delete('/comentarios/:id', verifyToken, (req, res) => {
-    const query = 'DELETE FROM comentarios WHERE id = ? AND usuario_id = ?';
-    db.query(query, [req.params.id, req.userId], (err, result) => {
+    const checkQuery = 'SELECT usuario_id FROM comentarios WHERE id = ?';
+
+    db.query(checkQuery, [req.params.id], (err, results) => {
         if (err) throw err;
-        res.json({ message: 'Comentario eliminado' });
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Comentario no encontrado' });
+        }
+        if (results[0].usuario_id !== req.userId) {
+            return res.status(403).json({ message: 'No tienes permiso para eliminar este comentario' });
+        }
+
+        const deleteQuery = 'DELETE FROM comentarios WHERE id = ?';
+        db.query(deleteQuery, [req.params.id], (err, result) => {
+            if (err) throw err;
+            res.json({ message: 'Comentario eliminado' });
+        });
     });
 });
 
-// Iniciar el servidor
+// 🚀 Iniciar el servidor
 const port = 3000;
 app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
+    console.log(`✅ Servidor corriendo en http://localhost:${port}`);
 });
