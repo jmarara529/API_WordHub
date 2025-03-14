@@ -24,9 +24,8 @@ Esta API permite gestionar usuarios, publicaciones y comentarios, incluyendo aut
     DB_USER=<TU_USUARIO>
     DB_PASSWORD=<TU_CONTRASEÑA>
     DB_DATABASE=<DATABASE>
-    PRIVATE_KEY_SSL=ruta/privkey.pem
-    PRIVATE_CERT_SSL=ruta/fullchain.pem
-    JWT_SECRET=tu_clave_secreta
+    PRIVATE_KEY_SSL=<ruta/privkey.pem>      #solo en caso de conexiones https
+    PRIVATE_CERT_SSL=<ruta/fullchain.pem>   #solo en caso de conexiones https
     ```
     **Nota**: Sustituye `<...>` por tus valores reales.
 
