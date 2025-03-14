@@ -64,6 +64,50 @@ app.post('/register',
     }
 );
 
+// 📌 ACTUALIZAR USUARIO POR ID
+app.put('/usuarios/:id', verifyToken, (req, res) => {
+    const { nombre, email, contraseña } = req.body;
+
+    if (!nombre && !email && !contraseña) {
+        return res.status(400).json({ message: 'No se proporcionaron campos para actualizar' });
+    }
+
+    const fields = [];
+    const values = [];
+
+    if (nombre) {
+        fields.push('nombre = ?');
+        values.push(nombre);
+    }
+    if (email) {
+        fields.push('email = ?');
+        values.push(email);
+    }
+    if (contraseña) {
+        const hash = bcrypt.hashSync(contraseña, 10); // Encripta la nueva contraseña
+        fields.push('contraseña = ?');
+        values.push(hash);
+    }
+
+    values.push(req.params.id); // El ID del usuario será el último parámetro
+
+    const query = `UPDATE usuarios SET ${fields.join(', ')} WHERE id = ?`;
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error(`Error al actualizar usuario con ID ${req.params.id}: ${err.message}`);
+            return res.status(500).json({ message: 'Error al actualizar el usuario' });
+        }
+
+        if (result.affectedRows > 0) {
+            res.json({ message: 'Usuario actualizado correctamente' });
+        } else {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+    });
+});
+
+
 // 📌 INICIO DE SESIÓN
 app.post('/login', (req, res) => {
     const { email, contraseña } = req.body;
@@ -80,6 +124,25 @@ app.post('/login', (req, res) => {
             }
         } else {
             res.status(401).json({ message: 'Credenciales inválidas' });
+        }
+    });
+});
+
+// 📌 OBTENER USUARIO POR ID (Sin contraseña)
+app.get('/usuarios/:id', (req, res) => {
+    console.log(`Solicitud para obtener usuario con ID: ${req.params.id}`);
+    const query = 'SELECT id, nombre, email FROM usuarios WHERE id = ?'; // 🔹 Solo selecciona los campos necesarios
+
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) {
+            console.error(`Error al obtener usuario con ID ${req.params.id}: ${err.message}`);
+            return res.status(500).json({ message: 'Error al obtener el usuario' });
+        }
+
+        if (results.length > 0) {
+            res.json(results[0]); // Retorna el usuario encontrado
+        } else {
+            res.status(404).json({ message: 'Usuario no encontrado' });
         }
     });
 });
