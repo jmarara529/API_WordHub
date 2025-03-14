@@ -104,6 +104,19 @@ app.put('/usuarios/:id',
     }
 );
 
+// Ruta para obtener un usuario por ID
+app.get('/usuarios/:id', verifyToken, (req, res) => {
+    const query = 'SELECT id, nombre, email FROM usuarios WHERE id = ?';
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) return res.status(500).json({ message: 'Error al obtener el usuario', error: err });
+        if (results.length > 0) {
+            res.json(results[0]); // Devolver el primer resultado como un objeto
+        } else {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+    });
+});
+
 // Ruta para eliminar un usuario
 app.delete('/usuarios/:id', verifyToken, (req, res) => {
     const query = 'DELETE FROM usuarios WHERE id = ?';
@@ -157,7 +170,11 @@ app.get('/publicaciones/:id', (req, res) => {
     const query = 'SELECT * FROM publicaciones WHERE id = ?';
     db.query(query, [req.params.id], (err, results) => {
         if (err) throw err;
-        res.json(results);
+        if (results.length > 0) {
+            res.json(results[0]); // Devolver el primer resultado como un objeto
+        } else {
+            res.status(404).json({ message: 'Publicación no encontrada' });
+        }
     });
 });
 
