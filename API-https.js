@@ -5,8 +5,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 require('dotenv').config();
-const https = require('https'); // Importar HTTPS
-const fs = require('fs'); // Importar FS para leer certificados
+const https = require('https');
+const fs = require('fs');
 
 const app = express();
 app.use(bodyParser.json());
@@ -23,17 +23,17 @@ db.connect((err) => {
     console.log('Conectado a la base de datos');
 });
 
-// Clave secreta desde .env
+// Clave secreta para JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'clave_segura_super_secreta';
 
-// Middleware para verificar el token con formato "Bearer <token>"
+// Middleware para verificar token JWT
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: 'Token no proporcionado o inválido' });
     }
 
-    const token = authHeader.split(" ")[1]; // Extrae solo el token
+    const token = authHeader.split(" ")[1];
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
             return res.status(401).json({ message: 'Token inválido' });
@@ -43,7 +43,7 @@ const verifyToken = (req, res, next) => {
     });
 };
 
-// Ruta para el registro de usuarios
+// 📌 REGISTRO DE USUARIO
 app.post('/register',
     [
         body('nombre').notEmpty().withMessage('El nombre es obligatorio'),
@@ -66,53 +66,7 @@ app.post('/register',
     }
 );
 
-// Ruta para modificar un usuario (solo el dueño puede editar)
-app.put('/usuarios/:id', verifyToken, (req, res) => {
-    if (req.userId !== parseInt(req.params.id)) {
-        return res.status(403).json({ message: 'No tienes permiso para modificar este usuario' });
-    }
-
-    const { nombre, email, contraseña } = req.body;
-    let query = 'UPDATE usuarios SET ';
-    const updates = [];
-    const values = [];
-
-    if (nombre) {
-        updates.push('nombre = ?');
-        values.push(nombre);
-    }
-    if (email) {
-        updates.push('email = ?');
-        values.push(email);
-    }
-    if (contraseña) {
-        updates.push('contraseña = ?');
-        values.push(bcrypt.hashSync(contraseña, 10));
-    }
-
-    query += updates.join(', ') + ' WHERE id = ?';
-    values.push(req.params.id);
-
-    db.query(query, values, (err, result) => {
-        if (err) throw err;
-        res.json({ id: req.params.id, nombre, email });
-    });
-});
-
-// Ruta para eliminar un usuario (solo el dueño puede eliminarse)
-app.delete('/usuarios/:id', verifyToken, (req, res) => {
-    if (req.userId !== parseInt(req.params.id)) {
-        return res.status(403).json({ message: 'No tienes permiso para eliminar este usuario' });
-    }
-
-    const query = 'DELETE FROM usuarios WHERE id = ?';
-    db.query(query, [req.params.id], (err, result) => {
-        if (err) throw err;
-        res.json({ message: 'Usuario eliminado' });
-    });
-});
-
-// Ruta para el inicio de sesión
+// 📌 INICIO DE SESIÓN
 app.post('/login', (req, res) => {
     const { email, contraseña } = req.body;
     const query = 'SELECT * FROM usuarios WHERE email = ?';
@@ -132,56 +86,117 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Ruta para editar una publicación (solo el autor puede hacerlo)
-app.put('/publicaciones/:id', verifyToken, (req, res) => {
-    const { titulo, contenido } = req.body;
-    const checkQuery = 'SELECT usuario_id FROM publicaciones WHERE id = ?';
-
-    db.query(checkQuery, [req.params.id], (err, results) => {
+// 📌 OBTENER TODAS LAS PUBLICACIONES
+app.get('/publicaciones/todas', (req, res) => {
+    const query = 'SELECT * FROM publicaciones';
+    db.query(query, (err, results) => {
         if (err) throw err;
-        if (results.length === 0) {
-            return res.status(404).json({ message: 'Publicación no encontrada' });
-        }
-        if (results[0].usuario_id !== req.userId) {
-            return res.status(403).json({ message: 'No tienes permiso para editar esta publicación' });
-        }
-
-        const updateQuery = 'UPDATE publicaciones SET titulo = ?, contenido = ? WHERE id = ?';
-        db.query(updateQuery, [titulo, contenido, req.params.id], (err, result) => {
-            if (err) throw err;
-            res.json({ id: req.params.id, titulo, contenido });
-        });
+        res.json(results);
     });
 });
 
-// Ruta para eliminar una publicación (solo el autor puede hacerlo)
-app.delete('/publicaciones/:id', verifyToken, (req, res) => {
-    const checkQuery = 'SELECT usuario_id FROM publicaciones WHERE id = ?';
-
-    db.query(checkQuery, [req.params.id], (err, results) => {
+// 📌 OBTENER PUBLICACIONES DEL USUARIO AUTENTICADO
+app.get('/publicaciones', verifyToken, (req, res) => {
+    const query = 'SELECT * FROM publicaciones WHERE usuario_id = ?';
+    db.query(query, [req.userId], (err, results) => {
         if (err) throw err;
-        if (results.length === 0) {
-            return res.status(404).json({ message: 'Publicación no encontrada' });
-        }
-        if (results[0].usuario_id !== req.userId) {
-            return res.status(403).json({ message: 'No tienes permiso para eliminar esta publicación' });
-        }
-
-        const deleteQuery = 'DELETE FROM publicaciones WHERE id = ?';
-        db.query(deleteQuery, [req.params.id], (err, result) => {
-            if (err) throw err;
-            res.json({ message: 'Publicación eliminada' });
-        });
+        res.json(results);
     });
 });
 
-// Configurar certificados SSL
+// 📌 OBTENER UNA PUBLICACIÓN POR ID
+app.get('/publicaciones/:id', (req, res) => {
+    const query = 'SELECT * FROM publicaciones WHERE id = ?';
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) throw err;
+        if (results.length > 0) {
+            res.json(results[0]);
+        } else {
+            res.status(404).json({ message: 'Publicación no encontrada' });
+        }
+    });
+});
+
+// 📌 CREAR UNA NUEVA PUBLICACIÓN (Requiere autenticación)
+app.post('/publicaciones', verifyToken, 
+    [
+        body('titulo').notEmpty().withMessage('El título es obligatorio'),
+        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
+    ],
+    (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errores: errors.array() });
+        }
+
+        const { titulo, contenido } = req.body;
+        const query = 'INSERT INTO publicaciones (usuario_id, titulo, contenido) VALUES (?, ?, ?)';
+        db.query(query, [req.userId, titulo, contenido], (err, result) => {
+            if (err) throw err;
+            res.json({ id: result.insertId, usuario_id: req.userId, titulo, contenido });
+        });
+    }
+);
+
+// 📌 OBTENER TODOS LOS COMENTARIOS DE UNA PUBLICACIÓN
+app.get('/publicaciones/:id/comentarios', (req, res) => {
+    const query = 'SELECT * FROM comentarios WHERE publicación_id = ?';
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+});
+
+// 📌 CREAR UN NUEVO COMENTARIO
+app.post('/publicaciones/:id/comentarios', verifyToken,
+    [
+        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
+    ],
+    (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errores: errors.array() });
+        }
+
+        const { contenido } = req.body;
+        const query = 'INSERT INTO comentarios (publicación_id, usuario_id, contenido) VALUES (?, ?, ?)';
+        db.query(query, [req.params.id, req.userId, contenido], (err, result) => {
+            if (err) throw err;
+            res.json({ id: result.insertId, publicación_id: req.params.id, usuario_id: req.userId, contenido });
+        });
+    }
+);
+
+// 📌 EDITAR UN COMENTARIO (Solo el autor puede hacerlo)
+app.put('/comentarios/:id', verifyToken,
+    [
+        body('contenido').notEmpty().withMessage('El contenido es obligatorio')
+    ],
+    (req, res) => {
+        const { contenido } = req.body;
+        const query = 'UPDATE comentarios SET contenido = ? WHERE id = ? AND usuario_id = ?';
+        db.query(query, [contenido, req.params.id, req.userId], (err, result) => {
+            if (err) throw err;
+            res.json({ id: req.params.id, contenido });
+        });
+    }
+);
+
+// 📌 ELIMINAR UN COMENTARIO (Solo el autor puede hacerlo)
+app.delete('/comentarios/:id', verifyToken, (req, res) => {
+    const query = 'DELETE FROM comentarios WHERE id = ? AND usuario_id = ?';
+    db.query(query, [req.params.id, req.userId], (err, result) => {
+        if (err) throw err;
+        res.json({ message: 'Comentario eliminado' });
+    });
+});
+
+// 📌 Configurar HTTPS
 const options = {
     key: fs.readFileSync(process.env.PRIVATE_KEY_SSL),
     cert: fs.readFileSync(process.env.PRIVATE_CERT_SSL),
 };
 
-// Iniciar servidor HTTPS
 const port = 3000;
 https.createServer(options, app).listen(port, () => {
     console.log(`Servidor seguro corriendo en https://localhost:${port}`);
