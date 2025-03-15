@@ -129,6 +129,45 @@ app.post('/login', (req, res) => {
     });
 });
 
+// 📌 Endpoint en tu backend para obtener el usuario basado en el token
+app.get('/usuario', verifyToken, (req, res) => {
+    const userId = req.userId; // `userId` se obtiene del middleware de autenticación `verifyToken`
+    const query = 'SELECT id, nombre, email FROM usuarios WHERE id = ?';
+
+    db.query(query, [userId], (err, result) => {
+        if (err) {
+            console.error(`Error al obtener el usuario: ${err.message}`);
+            return res.status(500).json({ message: 'Error interno del servidor' });
+        }
+
+        if (result.length === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        res.json(result[0]); // Devuelve el usuario
+    });
+});
+
+
+// 📌 ELIMINAR USUARIO POR ID
+app.delete('/usuarios/:id', verifyToken, (req, res) => {
+    const query = 'DELETE FROM usuarios WHERE id = ?';
+
+    db.query(query, [req.params.id], (err, result) => {
+        if (err) {
+            console.error(`Error al eliminar usuario con ID ${req.params.id}: ${err.message}`);
+            return res.status(500).json({ message: 'Error al eliminar el usuario' });
+        }
+
+        if (result.affectedRows > 0) {
+            res.json({ message: 'Usuario eliminado correctamente' });
+        } else {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+    });
+});
+
+
 // 📌 OBTENER USUARIO POR ID (Sin contraseña)
 app.get('/usuarios/:id', (req, res) => {
     console.log(`Solicitud para obtener usuario con ID: ${req.params.id}`);
@@ -201,6 +240,65 @@ app.post('/publicaciones', verifyToken,
         });
     }
 );
+
+// 📌 EDITAR PUBLICACIÓN POR ID
+app.put('/publicaciones/:id', verifyToken, (req, res) => {
+    const { titulo, contenido } = req.body;
+
+    // Verifica que al menos uno de los campos `titulo` o `contenido` se proporcione
+    if (!titulo && !contenido) {
+        return res.status(400).json({ message: 'No se proporcionaron campos para actualizar' });
+    }
+
+    const fields = [];
+    const values = [];
+
+    if (titulo) {
+        fields.push('titulo = ?');
+        values.push(titulo);
+    }
+    if (contenido) {
+        fields.push('contenido = ?');
+        values.push(contenido);
+    }
+
+    // Agrega el ID de la publicación como el último parámetro
+    values.push(req.params.id, req.userId); // Confirma que el usuario autenticado es el autor
+
+    const query = `UPDATE publicaciones SET ${fields.join(', ')} WHERE id = ? AND usuario_id = ?`;
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error(`Error al actualizar publicación con ID ${req.params.id}: ${err.message}`);
+            return res.status(500).json({ message: 'Error al actualizar la publicación' });
+        }
+
+        if (result.affectedRows > 0) {
+            res.json({ message: 'Publicación actualizada correctamente' });
+        } else {
+            res.status(404).json({ message: 'Publicación no encontrada o no autorizada' });
+        }
+    });
+});
+
+// 📌 ELIMINAR PUBLICACIÓN POR ID
+app.delete('/publicaciones/:id', verifyToken, (req, res) => {
+    const query = 'DELETE FROM publicaciones WHERE id = ? AND usuario_id = ?'; // Solo el autor puede eliminarla
+
+    db.query(query, [req.params.id, req.userId], (err, result) => {
+        if (err) {
+            console.error(`Error al eliminar publicación con ID ${req.params.id}: ${err.message}`);
+            return res.status(500).json({ message: 'Error al eliminar la publicación' });
+        }
+
+        if (result.affectedRows > 0) {
+            res.json({ message: 'Publicación eliminada correctamente' });
+        } else {
+            res.status(404).json({ message: 'Publicación no encontrada o no autorizada' });
+        }
+    });
+});
+
 
 // 📌 OBTENER TODOS LOS COMENTARIOS DE UNA PUBLICACIÓN
 app.get('/publicaciones/:id/comentarios', (req, res) => {
