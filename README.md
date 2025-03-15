@@ -57,12 +57,12 @@ PRIVATE_CERT_SSL=<ruta/fullchain.pem>
 ```bash
 npm start
 ```  
-Ejecuta `API-http.js`.  
 
 ### 🔹 Servidor Seguro (HTTPS)  
 ```bash
 node API-https.js
 ```  
+
 **Asegúrate de tener los certificados SSL configurados en `.env`.**  
 
 ---
@@ -81,11 +81,41 @@ Authorization: Bearer <tu_token_jwt>
 ```http
 POST /register
 ```  
+📌 **Cuerpo (JSON)**  
+```json
+{
+    "nombre": "Juan Pérez",
+    "email": "juan@example.com",
+    "contraseña": "mi_contraseña_segura"
+}
+```  
+
+📌 **Respuestas:**  
+- `201 Created`: Usuario creado.  
+- `400 Bad Request`: Datos inválidos o faltantes.  
+
+---
 
 ### 📌 Inicio de sesión  
 ```http
 POST /login
 ```  
+📌 **Cuerpo (JSON)**  
+```json
+{
+    "email": "juan@example.com",
+    "contraseña": "mi_contraseña_segura"
+}
+```  
+
+📌 **Ejemplo de respuesta exitosa:**  
+```json
+{
+    "token": "eyJhbGciOiJIUzI1NiIsIn..."
+}
+```  
+
+---
 
 ### 📌 Obtener Usuario por ID  
 ```http
@@ -96,6 +126,8 @@ GET /usuarios/:id
 Authorization: Bearer <tu_token_jwt>
 ```  
 
+---
+
 ### 📌 Modificar Usuario  
 ```http
 PUT /usuarios/:id
@@ -104,6 +136,17 @@ PUT /usuarios/:id
 ```http
 Authorization: Bearer <tu_token_jwt>
 ```  
+
+📌 **Cuerpo (JSON):**  
+```json
+{
+    "nombre": "Nuevo Nombre",
+    "email": "nuevo_email@ejemplo.com",
+    "contraseña": "nueva_contraseña"
+}
+```  
+
+---
 
 ### 📌 Eliminar Usuario  
 ```http
@@ -131,11 +174,6 @@ GET /publicaciones
 Authorization: Bearer <tu_token_jwt>
 ```  
 
-### 📌 Obtener publicación por ID  
-```http
-GET /publicaciones/:id
-```  
-
 ### 📌 Crear una nueva publicación  
 ```http
 POST /publicaciones
@@ -145,6 +183,16 @@ POST /publicaciones
 Authorization: Bearer <tu_token_jwt>
 ```  
 
+📌 **Cuerpo (JSON):**  
+```json
+{
+    "titulo": "Mi primera publicación",
+    "contenido": "Este es el contenido de la publicación."
+}
+```  
+
+---
+
 ### 📌 Editar una publicación  
 ```http
 PUT /publicaciones/:id
@@ -153,6 +201,16 @@ PUT /publicaciones/:id
 ```http
 Authorization: Bearer <tu_token_jwt>
 ```  
+
+📌 **Cuerpo (JSON):**  
+```json
+{
+    "titulo": "Título actualizado",
+    "contenido": "Contenido actualizado de la publicación."
+}
+```  
+
+---
 
 ### 📌 Eliminar una publicación  
 ```http
@@ -180,6 +238,15 @@ POST /publicaciones/:id/comentarios
 Authorization: Bearer <tu_token_jwt>
 ```  
 
+📌 **Cuerpo (JSON):**  
+```json
+{
+    "contenido": "Este es mi comentario."
+}
+```  
+
+---
+
 ### 📌 Editar un comentario  
 ```http
 PUT /comentarios/:id
@@ -188,6 +255,15 @@ PUT /comentarios/:id
 ```http
 Authorization: Bearer <tu_token_jwt>
 ```  
+
+📌 **Cuerpo (JSON):**  
+```json
+{
+    "contenido": "Comentario actualizado."
+}
+```  
+
+---
 
 ### 📌 Eliminar un comentario  
 ```http
@@ -241,16 +317,6 @@ CREATE TABLE comentarios (
 
 ---
 
-## 🔹 Índices  
-```sql
-CREATE INDEX idx_email ON usuarios(email);  
-CREATE INDEX idx_usuario_id ON publicaciones(usuario_id);  
-CREATE INDEX idx_publicacion_id ON comentarios(publicacion_id);  
-CREATE INDEX idx_usuario_id_comentarios ON comentarios(usuario_id);  
-```  
-
----
-
 ## 🔹 Manejo de errores  
 - **400 Bad Request**: Datos inválidos o faltantes.  
 - **401 Unauthorized**: Token no válido o no proporcionado.  
@@ -261,8 +327,4 @@ CREATE INDEX idx_usuario_id_comentarios ON comentarios(usuario_id);
 ---
 
 ## ✅ Conclusión  
-🔹 **API segura y optimizada con autenticación JWT.**  
-🔹 **Protección contra acceso no autorizado.**  
-🔹 **Persistencia de sesión con tokens.**  
-
-🚀 **¡Lista para producción!**  
+🚀 **API segura y optimizada con autenticación JWT.**  
