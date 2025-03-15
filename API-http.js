@@ -9,17 +9,15 @@ require('dotenv').config();
 const app = express();
 app.use(bodyParser.json());
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE
 });
 
-db.connect((err) => {
-    if (err) throw err;
-    console.log('Conectado a la base de datos');
-});
+console.log('Conectado a la base de datos');
+
 
 // Clave secreta para JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'clave_segura_super_secreta';
